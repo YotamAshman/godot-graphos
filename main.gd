@@ -1,19 +1,22 @@
 extends Node2D
 
+# Unmodifiable constants - Changing these breaks logic
+const NOT_FOUND = -1
+const WIDTH_IRRELEVANT = -1.0
+const ID_START = 0
+
+# Modifiable constants - Changes appearance
 const NODE_RADIUS = 30
 const LINK_WIDTH = 5
 
 var node_dict:Dictionary[int,GraphosNode] = {}
 var node_links:Array[GraphosLink] = []
-var current_node_id = 0
+var current_node_id := ID_START 
 
-var currently_tracked_node_id := -1
+var currently_tracked_node_id := NOT_FOUND
 
-var id1_to_link := -1
-var id2_to_link := -1
-
-var rec_selection_pos1 := Vector2.ZERO
-var rec_selection_pos2 := Vector2.ZERO
+var id1_to_link := NOT_FOUND
+var id2_to_link := NOT_FOUND
 
 class GraphosNode:
 	var pos:Vector2
@@ -23,7 +26,7 @@ class GraphosNode:
 	var width:float
 	var highlight := false 
 	
-	func _init(pos, color, radius, filled, width=-1.0) -> void:
+	func _init(pos, color, radius, filled, width=WIDTH_IRRELEVANT) -> void:
 		self.pos = pos
 		self.color = color
 		self.radius = radius
@@ -65,7 +68,8 @@ func remove_node(id:int) -> void:
 	node_dict.erase(id)
 
 func draw_graphos_node(node:GraphosNode):
-	var width = -1.0
+	# Width only relevant if circle is not filled
+	var width = WIDTH_IRRELEVANT
 	if not node.filled:
 		width = node.width
 	
@@ -83,7 +87,7 @@ func draw_graphos_link(link:GraphosLink):
 
 func _process(delta: float) -> void:
 	# Handles actual movement of node mouse dragging
-	if currently_tracked_node_id >= 0:
+	if currently_tracked_node_id != NOT_FOUND:
 		node_dict[currently_tracked_node_id].pos = get_global_mouse_position()
 		queue_redraw()
 
@@ -94,7 +98,7 @@ func _input(event: InputEvent) -> void:
 		
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.is_pressed():
 		# Left click released - Stop dragging node if selected
-		currently_tracked_node_id = -1
+		currently_tracked_node_id = NOT_FOUND
 		
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.is_pressed():
 		var pos = get_global_mouse_position()
@@ -113,7 +117,7 @@ func _draw() -> void:
 func handle_left_click(pos:Vector2):
 	print_debug("Left click on pos: ",pos)
 	var node_id = get_node_id_from_click_collision(pos)
-	if node_id >= 0:
+	if node_id != NOT_FOUND:
 		currently_tracked_node_id = node_id
 	else:
 		# No node found on left click - Create new node
@@ -122,34 +126,34 @@ func handle_left_click(pos:Vector2):
 func handle_right_click(pos:Vector2):
 	print_debug("Right click on pos: ",pos)
 	var node_id = get_node_id_from_click_collision(pos)
-	if node_id >= 0:
+	if node_id != NOT_FOUND:
 		# When 2 nodes are selected, create a link between them
-		if id1_to_link == -1:
+		if id1_to_link == NOT_FOUND:
 			id1_to_link = node_id
 			node_dict[node_id].toggle_highlight()
 			print("Selected first node")
-		elif id2_to_link == -1:
+		elif id2_to_link == NOT_FOUND:
 			if node_id == id1_to_link:
 				print("Selected same node. Removing selection")
 				node_dict[node_id].toggle_highlight()
-				id1_to_link = -1
-				id2_to_link = -1
+				id1_to_link = NOT_FOUND
+				id2_to_link = NOT_FOUND
 				return
 				
 			id2_to_link = node_id
 			print("Linking two selected node ids: ", id1_to_link,", ", id2_to_link)
 			link_nodes(id1_to_link,id2_to_link)
 			node_dict[id1_to_link].toggle_highlight()
-			id1_to_link = -1
-			id2_to_link = -1
+			id1_to_link = NOT_FOUND
+			id2_to_link = NOT_FOUND
 	else:
 		print("Removing node selection")
-		if id1_to_link >= 0:
+		if id1_to_link != NOT_FOUND:
 			node_dict[id1_to_link].toggle_highlight()
-		if id2_to_link >= 0:
+		if id2_to_link != NOT_FOUND:
 			node_dict[id2_to_link].toggle_highlight()
-		id1_to_link = -1
-		id2_to_link = -1
+		id1_to_link = NOT_FOUND
+		id2_to_link = NOT_FOUND
 		
 
 func get_node_id_from_click_collision(pos:Vector2) -> int:
@@ -158,4 +162,4 @@ func get_node_id_from_click_collision(pos:Vector2) -> int:
 		if node.contains(pos):
 			print_debug("Detected click on node ID:", key)
 			return key
-	return -1
+	return NOT_FOUND
