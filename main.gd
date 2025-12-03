@@ -1,15 +1,19 @@
 extends Node2D
 
+const NODE_RADIUS = 30
+const LINK_WIDTH = 5
+
 var node_dict:Dictionary[int,GraphosNode] = {}
 var node_links:Array[GraphosLink] = []
 var current_node_id = 0
 
 var currently_tracked_node_id := -1
+
 var id1_to_link := -1
 var id2_to_link := -1
 
-const NODE_RADIUS = 30
-const LINK_WIDTH = 5
+var rec_selection_pos1 := Vector2.ZERO
+var rec_selection_pos2 := Vector2.ZERO
 
 class GraphosNode:
 	var pos:Vector2
@@ -74,9 +78,11 @@ func draw_graphos_link(link:GraphosLink):
 		var color = link.color
 		draw_line(pos1,pos2,color,LINK_WIDTH,true)
 	else:
+		# One or more of the link's nodes have been deleted, so the link should also be deleted
 		node_links.erase(link)
 
 func _process(delta: float) -> void:
+	# Handles actual movement of node mouse dragging
 	if currently_tracked_node_id >= 0:
 		node_dict[currently_tracked_node_id].pos = get_global_mouse_position()
 		queue_redraw()
@@ -87,12 +93,14 @@ func _input(event: InputEvent) -> void:
 		handle_left_click(pos)
 		
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.is_pressed():
+		# Left click released - Stop dragging node if selected
 		currently_tracked_node_id = -1
 		
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.is_pressed():
 		var pos = get_global_mouse_position()
 		handle_right_click(pos)
 	
+	# Basically calls _draw
 	queue_redraw()
 
 func _draw() -> void:
@@ -108,12 +116,14 @@ func handle_left_click(pos:Vector2):
 	if node_id >= 0:
 		currently_tracked_node_id = node_id
 	else:
+		# No node found on left click - Create new node
 		add_green_node(pos)
 	
 func handle_right_click(pos:Vector2):
 	print_debug("Right click on pos: ",pos)
 	var node_id = get_node_id_from_click_collision(pos)
 	if node_id >= 0:
+		# When 2 nodes are selected, create a link between them
 		if id1_to_link == -1:
 			id1_to_link = node_id
 			node_dict[node_id].toggle_highlight()
@@ -121,12 +131,13 @@ func handle_right_click(pos:Vector2):
 		elif id2_to_link == -1:
 			if node_id == id1_to_link:
 				print("Selected same node. Removing selection")
+				node_dict[node_id].toggle_highlight()
 				id1_to_link = -1
 				id2_to_link = -1
 				return
 				
 			id2_to_link = node_id
-			print("Linking two selected nodes")
+			print("Linking two selected node ids: ", id1_to_link,", ", id2_to_link)
 			link_nodes(id1_to_link,id2_to_link)
 			node_dict[id1_to_link].toggle_highlight()
 			id1_to_link = -1
